@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Component } from 'react';
 
 export default class Header extends Component {
-    render() {
+    render() : JSX.Element {
         return (
             <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
                 <div className="container-fluid">
@@ -27,6 +27,6 @@ export default class Header extends Component {
                     </div>
                 </div>
             </nav>
-        )
+        );
     }
 }
