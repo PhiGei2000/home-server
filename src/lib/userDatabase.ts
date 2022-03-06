@@ -46,4 +46,8 @@ export default abstract class UserDatabase {
             users=obj.map(element => new User(element.username, element.password))
         });
     }
+
+    static {
+        this.loadUsers();
+    }
 }

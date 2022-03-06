@@ -2,12 +2,12 @@ import { Component } from 'react';
 import * as crypto from 'crypto';
 
 export default class Login extends Component {
-    handleLogin(event) {
+    async handleLogin(event) {
         event.preventDefault();
 
         const data = {
-            username: event.target.username.value,
-            password: event.target.username.value
+            username: event.target.loginUsername.value,
+            password: event.target.loginPassword.value
         };
 
         const endpoint = '/api/login';
@@ -22,7 +22,7 @@ export default class Login extends Component {
             body: JSON.stringify(data)
         };
 
-        fetch(endpoint, options);
+        await fetch(endpoint, options);
     }
 
     render() {

@@ -1,36 +1,58 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { Authentication } from '../../lib/authentication';
 import Session from '../../lib/session';
 import '../../lib/userDatabase'
 import UserDatabase from '../../lib/userDatabase';
 
-var activeSessions: Session[];
-
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "Post") {
-    const username = req.headers['username'] as string;
-    const password = req.headers['password'] as string;
+    const data = req.body;
 
-    const user = UserDatabase.getUser(username);
-
-    if (user.checkPassword(password)) {
-      var session = new Session(username);
-
-      activeSessions.push(session);
-
-      res.status(200).end();
+    if (!data.username || !data.password) {
+      return res.status(400).json({ data: 'Username or password not found' });
     }
-    else {
-      res.status(400).end();
+
+    const username = data.username as string;
+    const password = data.password as string;
+
+    const session = Authentication.openSession(username, password);
+
+    if (session) {
+      if (data.return_to) {
+        res.setHeader('Location', data.return_to as string);
+      }
+      else {
+        res.setHeader('Location', `https://${req.headers.host}/`);
+      }
+
+      res.setHeader('Set-Cookie', `SID=${session.sessionId}`);
+
+      return res.status(302);
     }
+
+    let cookies;
+    req.headers.cookie.split(';').forEach(cookie => {
+      let parts = cookie.split('=', 2);
+
+      cookies[parts[0]] = parts[1];
+    });
+
+    if (cookies['SID']) {
+      if (Authentication.isValid(cookies['SID'])) {
+        if (data.return_to) {
+          res.setHeader('Location', data.return_to as string);
+        }
+        else {
+          res.setHeader('Location', `https://${req.headers.host}/`);
+        }
+
+        return res.status(302);
+      }
+    }
+    
+
+    return res.status(400).json({ data: 'Username or password incorrect' });    
   }
-}
 
-export function sessionValid(sid: string): boolean {
-  const session = activeSessions.find(session => session.sessionId === sid);
-
-  if (session) {
-    return session.validTo.getTime() < Date.now();
-  }
-
-  return false;
+  return res.status(405);
 }
