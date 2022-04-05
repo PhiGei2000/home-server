@@ -23,8 +23,13 @@ export default class Session {
     }
 
     private checkUserPassword(username: string, password: string): boolean {
-        const user = UserDatabase.getUser(username);
+        const user = UserDatabase.getUserSync(username);
 
-        return user && user.checkPassword(password);
+        console.log(user);
+        if (user) {
+            return user.checkPassword(password);
+        }
+
+        return false;
     }
 }

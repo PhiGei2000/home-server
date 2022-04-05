@@ -2,7 +2,7 @@ import Logger from './logger';
 import Session from './session'
 
 export class Authentication {
-    private static activeSessions: Session[];
+    private static activeSessions: Session[] = [];
 
     public static isValid(sid: string): boolean {
         const session = this.activeSessions.find(session => session.sessionId === sid);
@@ -26,7 +26,7 @@ export class Authentication {
         }
         catch (e) {
             if (e instanceof AuthenticationException) {
-                Logger.log(`AuthenticationException: ${e.message}`);                
+                Logger.log(`AuthenticationException: ${e.message}`);
             }
             else {
                 console.log(e);
@@ -38,7 +38,7 @@ export class Authentication {
         const sessionIndex = this.activeSessions.findIndex(session => session.sessionId === sid);
         if (sessionIndex != -1) {
             this.activeSessions.splice(sessionIndex);
-            
+
             Logger.log(`Session closed (ID=${sid})`);
         }
     }
