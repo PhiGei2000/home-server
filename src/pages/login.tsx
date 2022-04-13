@@ -1,5 +1,5 @@
 import { Component } from 'react';
-import * as crypto from 'crypto';
+import Cookies from 'js-cookie';
 
 export default class Login extends Component {
     async handleLogin(event) {
@@ -22,7 +22,18 @@ export default class Login extends Component {
             body: JSON.stringify(data)
         };
 
-        await fetch(endpoint, options);
+        await fetch(endpoint, options)
+            .then(res => {
+                if (res.status === 302) {
+                    const cookies = res.headers.get('Set-Cookie');
+
+                    return cookies;
+                }
+            }).then(cookies => {
+                document.cookie = cookies;
+
+                console.log("cookies set");
+            });
     }
 
     render() {
@@ -35,7 +46,7 @@ export default class Login extends Component {
                     </div>
                     <div className="mb-3">
                         <label htmlFor="loginPassword" className="form-label">Passwort</label>
-                        <input type="password" className="form-control" id="loginPassword" name="password"/>
+                        <input type="password" className="form-control" id="loginPassword" name="password" />
                     </div>
                     <div className="mb-3">
                         <button type="submit" className="btn btn-primary">Login</button>

@@ -7,7 +7,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "POST") {
     const data = req.body;
 
-
     if (!data.username || !data.password) {
       res.status(400).json({ data: 'Username or password not found' });
       return;
@@ -26,8 +25,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         cookies.set(parts[0], parts[1]);
       });
 
-      if (cookies['SID']) {
-        if (Authentication.isValid(cookies['SID'])) {
+      if (cookies.has("SID")) {
+        if (Authentication.isValid(cookies.get("SID"))) {
           if (data.return_to) {
             res.setHeader('Location', data.return_to as string);
           }
