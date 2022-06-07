@@ -51,7 +51,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         res.setHeader('Location', `http://${req.headers.host}/`);
       }
 
-      res.setHeader('Set-Cookie', `SID=${session.sessionId}`);
+      res.setHeader('Set-Cookie', `SID=${session.sessionId}; Max-Age=300; Path=/`);
 
       res.status(302).end();
     }

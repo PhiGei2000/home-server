@@ -1,5 +1,6 @@
 import { Component } from 'react';
-import Cookies from 'js-cookie';
+import cookie from 'js-cookie';
+import { processCookie } from '../lib/cookie';
 
 export default class Login extends Component {
     async handleLogin(event) {
@@ -25,14 +26,12 @@ export default class Login extends Component {
         await fetch(endpoint, options)
             .then(res => {
                 if (res.status === 302) {
-                    const cookies = res.headers.get('Set-Cookie');
+                    const cookies = res.headers.get('Set-Cookie');                    
 
                     return cookies;
                 }
-            }).then(cookies => {
-                document.cookie = cookies;
-
-                console.log("cookies set");
+            }).then(cookie => {
+                processCookie(cookie);                
             });
     }
 
