@@ -23,10 +23,15 @@ export class User {
 
 export default abstract class UserDatabase {
 
-    public static async getUser(username: string): Promise<User> {
+    public static async getUser(username: string, password: string): Promise<User> {
         const users = await this.getAll();
 
-        return users.find(user => user.username === username);
+        const user = users.find(user => user.username === username);
+        if (user.checkPassword(password)) {
+            return user;
+        }
+
+        return null;
     }
 
     public static getUserSync(username: string): User {

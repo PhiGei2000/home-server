@@ -1,67 +1,29 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { Authentication } from '../../lib/authentication';
-import '../../lib/userDatabase'
+import { NextApiRequest, NextApiResponse } from "next";
+import UserDatabase from "../../lib/userDatabase";
 
-
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === "POST") {
-    const data = req.body;
-
-    if (!data.username || !data.password) {
-      res.status(400).json({ data: 'Username or password not found' });
-      return;
+export default async function login(req: NextApiRequest, res: NextApiResponse) {
+    if (!req.body){
+        res.status(400).end("No content given!");
+        return;
     }
 
-    const username = data.username as string;
-    const password = data.password as string;
-
-    // check if cookies contain a session id
-    if (req.headers.cookie) {
-      let cookies: Map<string, string> = new Map<string, string>();
-      req.headers.cookie.split(';').forEach(cookie => {
-        let parts = cookie.split('=', 2);
-        console.log(parts);
-
-        cookies.set(parts[0], parts[1]);
-      });
-
-      if (cookies.has("SID")) {
-        if (Authentication.isValid(cookies.get("SID"))) {
-          if (data.return_to) {
-            res.setHeader('Location', data.return_to as string);
-          }
-          else {
-            res.setHeader('Location', `http://${req.headers.host}/`);
-          }
-
-          res.status(302);
-          return;
-        }
-      }
+    if (req.headers['content-type'] != 'application/json') {
+        res.status(415).end();
+        return;
     }
 
-    // create new session
-    const session = Authentication.openSession(username, password);
+    const json = JSON.parse(req.body());
+    const username = json.username;
+    const password = json.password;
 
-    if (session) {
-      if (data.return_to) {
-        res.setHeader('Location', data.return_to as string);
-      }
-      else {
-        res.setHeader('Location', `http://${req.headers.host}/`);
-      }
-
-      res.setHeader('Set-Cookie', `SID=${session.sessionId}; Max-Age=300; Path=/`);
-
-      res.status(302).end();
+    if (!(username && password)) {
+        res.status(400).end("Credentials not complete");
     }
-    else {
-      res.status(400).json({ data: 'Username or password incorrect' });
-    }
-  }
-  else {
-    res.status(405);
-  }
 
-  res.end();
+    const user = await UserDatabase.getUser(username, password);
+    if (user) {
+        res.status(200).end(user);
+    }
+
+    res.end(400).end("");
 }

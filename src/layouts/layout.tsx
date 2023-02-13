@@ -5,7 +5,9 @@ export default function Layout({ children }) {
         <>
             <Header />
             <main>
-                {children}
+                <div className="container-xl">
+                    {children}
+                </div>
             </main>
         </>
     )

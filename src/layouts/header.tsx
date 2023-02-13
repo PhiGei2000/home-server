@@ -5,10 +5,10 @@ import { Component } from 'react';
 export default class Header extends Component {
     render() : JSX.Element {
         return (
-            <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
+            <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
                 <div className="container-fluid">
                     <Link href="/">
-                        <a className="navbar-brand">Home</a>
+                        <span className="navbar-brand">Home</span>
                     </Link>
                     <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle Navigation">
                         <span className="navbar-toggler-icon"></span>
@@ -17,12 +17,12 @@ export default class Header extends Component {
                         <ul className="navbar-nav me-auto mb-2 mb-lg-0">
                             <li className="nav-item">
                                 <Link href="/projects">
-                                    <a className="nav-link">Projekte</a>
+                                    <span className="nav-link">Projekte</span>
                                 </Link>
                             </li>
                         </ul>
                         <Link href="/login">
-                            <a className="btn btn-dark d-flex">Login</a>
+                            <span className="btn btn-dark d-flex">Login</span>
                         </Link>
                     </div>
                 </div>
