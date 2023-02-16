@@ -1,23 +1,23 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import { checkPassword } from '../../../lib/authentication';
 
 export default NextAuth({
+  session: {
+    strategy: "jwt"
+  },
   providers: [
     CredentialsProvider({
-      credentials: {
+      type: 'credentials',
+      credentials: {},
+      async authorize (credentials, req) {
+        const { password } = credentials as { password: string };
 
-      },
-      authorize: async (credentials, req) => {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          body: JSON.stringify(credentials),
-          headers: { "Content-Type": "application/json" }
-        });
-
-        const user = await res.json();
-
-        if (res.ok && user) {
-          return user;
+        if (await checkPassword(password)) {
+          return {
+            id: '',
+            email: ""
+          };
         }
 
         return null;
@@ -25,6 +25,7 @@ export default NextAuth({
     })
   ],
   pages: {
-    signIn: "/login"
+    signIn: "/login",
+    signOut: "/logout"
   }
 });
