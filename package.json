@@ -2,10 +2,13 @@
   "name": "home-server",
   "version": "0.1.0",
   "private": true,
+  "repository": {
+    "url": "https://github.com/PhiGei2000/home-server.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 8080 --hostname 127.0.0.1",
     "lint": "next lint"
   },
   "dependencies": {
