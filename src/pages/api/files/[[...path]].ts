@@ -1,14 +1,14 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import path from "path";
+import { join, extname } from "path";
 import * as fs from 'fs/promises';
 import { existsSync } from "fs";
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-    const { paths } = req.query;
+    const { path } = req.query;
 
     let pathStr: string;
-    if (paths) {
-        pathStr = path.join(process.env.FILE_DIRECTORY!, (paths as string[]).join('/'));
+    if (path) {
+        pathStr = join(process.env.FILE_DIRECTORY!, (path as string[]).join('/'));
     }
     else {
         pathStr = process.env.FILE_DIRECTORY as string;
@@ -20,7 +20,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
             return;
         }
 
-        const isDirectory = path.extname(pathStr) === '';
+        const isDirectory = extname(pathStr) === '';
         if (isDirectory) {
             fs.readdir(pathStr)
                 .then(files => {
