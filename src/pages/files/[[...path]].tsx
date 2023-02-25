@@ -43,14 +43,25 @@ export default function Files(): JSX.Element {
 
     return (<>
         <h1>Dateien</h1>
+        <h5>/{path}</h5>
         <div className="container">
-            <div className="row-cols">
-                <Link href={`/files/${parentDir}`}>
-                    <span className="material-symbols-outlined">arrow_upward</span>
-                </Link>
-                <span className="material-symbols-outlined">upload_file</span>
+            <div className="row align-items-center">
+                <div className="col-auto">
+                    <Link href={`/files/${parentDir}`} passHref className="text-decoration-none text-body">
+                        <span className="material-symbols-outlined">arrow_upward</span>
+                    </Link>
+                </div>
+                <div className="col-auto">
+                    <span className="material-symbols-outlined">upload_file</span>
+                </div>
+                <div className="col">
+                    <form className="d-flex" role='search'>
+                        <input type="search" className="form-control me-2" placeholder='Datei suchen' />
+                        <button className="btn btn-outlined-success" type='submit'>Suchen</button>
+                    </form>
+                </div>
             </div>
-            <div className="row justify-content-start">
+            <div className="row mt-5">
                 {files.map((file) => File(file, path))}
             </div>
         </div>
@@ -68,8 +79,8 @@ function File(file: FileSystemEntry, path: string) {
     const filetype = file.type === FileSystemEntryType.DIRECTORY ? "folder" : "draft";
     const link = `/files/${join(path, file.filename)}`;
 
-    return (<div className="col-md-2 text-center">
-        <Link href={link}>
+    return (<div className="col-md-2 text-center text-break">
+        <Link href={link} passHref className="text-decoration-none text-body">
             <span className="material-symbols-outlined">{filetype}</span>
             <p>{file.filename}</p>
         </Link>

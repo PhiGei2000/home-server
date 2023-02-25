@@ -5,8 +5,11 @@ import 'bootstrap/dist/css/bootstrap.css'
 import 'material-symbols'
 import { AppProps } from 'next/app';
 import { SessionProvider } from 'next-auth/react';
+import { useEffect } from 'react'
 
 function MyApp({ Component, pageProps }: AppProps) {
+  useEffect(() => { import('bootstrap/dist/js/bootstrap'); });
+
   return (
     <SessionProvider>
       <Layout>

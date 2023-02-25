@@ -9,7 +9,7 @@ export default function Layout({ children }: LayoutProps) {
         <>
             <Header />
             <main>
-                <div className="container-xl">
+                <div className="container">
                     {children}
                 </div>
             </main>

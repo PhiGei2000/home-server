@@ -1,7 +1,6 @@
-import Head from "next/head";
 import Link from "next/link";
-import { Component } from 'react';
 import { useSession, getSession } from "next-auth/react";
+
 
 export default function Header(): JSX.Element {
     const { data: session, status } = useSession();
@@ -19,9 +18,7 @@ export default function Header(): JSX.Element {
                         <li className="nav-item">
                             <Link className="nav-link" href="/projects">Projekte</Link>
                         </li>
-                        {authenticated && <li className="nav-item">
-                            <Link className="nav-link" href="/files">Dateien</Link>
-                        </li>}
+                        {authenticated && getAuthLinks()}
                     </ul>
                     <div className="nav-item ">
                         {authenticated ?
@@ -34,4 +31,22 @@ export default function Header(): JSX.Element {
             </div>
         </nav>
     );
+}
+
+function getAuthLinks() {
+    return <>
+        <li className="nav-item">
+            <Link className="nav-link" href="/files">Dateien</Link>
+        </li>
+        <li className="nav-item dropdown">
+            <Link className="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Smart Home
+            </Link>
+            <ul className="dropdown-menu">
+                <li><Link className="dropdown-item" href="/smarthome">Dashboard</Link></li>
+                <li><hr className="dropdown-divider"></hr></li>
+                <li><Link className="dropdown-item" href="/smarthome/climate">Temperatur-Daten</Link></li>
+            </ul>
+        </li>
+    </>
 }
