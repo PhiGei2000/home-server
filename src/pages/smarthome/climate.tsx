@@ -44,7 +44,7 @@ export default function Climate() {
         return <span className='spinner'></span>
     }
 
-    const options: ScaleChartOptions<'line'> = {
+    const options: any = {
         scales: {
             x: {
                 title: {

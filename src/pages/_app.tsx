@@ -8,14 +8,15 @@ import { SessionProvider } from 'next-auth/react';
 import { useEffect } from 'react'
 
 function MyApp({ Component, pageProps }: AppProps) {
-  useEffect(() => { import('bootstrap/dist/js/bootstrap'); });
+  useEffect(() => { require('bootstrap/dist/js/bootstrap.js'); });
 
-  return (
+  return (<>
     <SessionProvider>
       <Layout>
         <Component {...pageProps} />
       </Layout>
     </SessionProvider>
+  </>
   );
 }
 
