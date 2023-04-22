@@ -1,7 +1,6 @@
 import * as mysql from 'mysql';
 import { NextApiRequest, NextApiResponse } from 'next';
-import Event, * as EventData from '../../../../lib/music/event';
-import Song, { PlayedSong } from '../../../../lib/music/song';
+import { toSqlDate } from '../../../../lib/sqlDateFormat';
 
 function connectDatabase() {
     return mysql.createConnection({
@@ -29,34 +28,19 @@ export default function handle(req: NextApiRequest, res: NextApiResponse) {
 function handleGet(req: NextApiRequest, res: NextApiResponse) {
     const { date } = req.query;
 
-    const connection = connectDatabase();
-    connection.query(`SELECT * FROM Events WHERE Date=\"${date}\"`, function (err, result, fields) {
-        if (err) {
-            res.status(500).end(err);
+    const parsedDate = date ? new Date(Date.parse(date as string)) : undefined;
+    res.redirect(307, getRedirectionUrl(parsedDate));
+}
 
-            connection.end()
-            return;
-        }
+function getRedirectionUrl(date: Date | undefined) : string {
+    const baseUrl = `${process.env.NEXT_PUBLIC_BASE_URL}api/music/organ/events`;
 
-        const event = new EventData.default(result[0].Date, result[0].Location, result[0].Comment);
+    if (date === undefined) {
+        const currentYear = new Date(Date.now()).getFullYear();
+        return `${baseUrl}/${currentYear}`;
+    }
 
-        connection.query(`SELECT Songs.SongID, Songs.Title, Songs.Category, Songs.Section, Event.Verses FROM (SELECT * FROM Played WHERE Date="${date}") as Event INNER JOIN Songs ON Songs.SongID=Event.SongID ORDER BY Position`, function (err, result, fields) {
-            if (err) {
-                res.status(500).end(err);
-
-                connection.end()
-                return;
-            }
-
-            result.forEach((row: any) => {
-                const song = new Song(row.SongID, row.Title, row.Category, row.Section);
-                event.songsPlayed.push(new PlayedSong(song, row.Verses));
-            });
-
-            res.status(200).json(event);
-            connection.end();
-        })
-    });
+    return `${baseUrl}/${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}/${date.getHours()}/${date.getMinutes()}/${date.getSeconds()}`;
 }
 
 function handlePost(req: NextApiRequest, res: NextApiResponse) {
@@ -66,34 +50,39 @@ function handlePost(req: NextApiRequest, res: NextApiResponse) {
         return;
     }
 
-    const event = req.body;
-    if (!event || !event.date) {
+    const {date, location, comment, songsPlayed} = req.body;
+    if (!date) {
         res.status(415);
         return;
     }
 
-
     const connection = connectDatabase();
 
-    const eventDate = new Date(event.date);
-    const dateString = connection.escape(eventDate);
+    const eventDate = new Date(date);
+    const dateString = toSqlDate(eventDate);
 
     // check if date exists
-    connection.query(`SELECT Date FROM Events WHERE Date=${dateString}`, (err, results, fields) => {
+    connection.query(`SELECT Date FROM Events WHERE Date="${dateString}"`, (err, results, fields) => {
         const exists = results.length !== 0;
         if (!exists) {
             // create new entry
-            connection.query(`INSERT INTO Events(Date,Location,Comment) VALUES (\"${dateString}\","${event.location ?? ""}","${event.comment ?? ""}")`, (err, result, fields) => {
+            connection.query(`INSERT INTO Events(Date,Location,Comment) VALUES (\"${dateString}\","${location ?? ""}","${comment ?? ""}")`, (err, result, fields) => {
                 if (err) {
                     res.status(500).end(err);
                     connection.end();
                     return;
                 }
 
-                if (event.songsPlayed) {
-                    updatePlayedSongs(connection, dateString, event.songsPlayed, () => {
+                if (songsPlayed) {
+                    updatePlayedSongs(connection, dateString, songsPlayed, () => {
+                        const json = JSON.stringify({
+                            date: date,
+                            location: location ?? "",
+                            comment: comment ?? "",
+                            songsPlayed: songsPlayed ?? []
+                        });
 
-                        res.status(201).end(event);
+                        res.status(201).end(json);
                         connection.end();
                     })
                 }
@@ -102,15 +91,15 @@ function handlePost(req: NextApiRequest, res: NextApiResponse) {
         else {
             // update existing entry
             let columnsToUpdate: { columnName: string, value: string }[] = [];
-            if (event.location !== undefined)
-                columnsToUpdate.push({ columnName: "Location", value: event.location });
+            if (location !== undefined)
+                columnsToUpdate.push({ columnName: "Location", value: location });
 
-            if (event.comment !== undefined)
-                columnsToUpdate.push({ columnName: "Comment", value: event.comment });
+            if (comment !== undefined)
+                columnsToUpdate.push({ columnName: "Comment", value: comment });
 
             if (columnsToUpdate.length !== 0) {
                 const setCommand = columnsToUpdate.map((val) => `${val.columnName}="${val.value}"`).join(",");
-                const updateCommand = `UPDATE Events SET ${setCommand} WHERE Date=${dateString}`;
+                const updateCommand = `UPDATE Events SET ${setCommand} WHERE Date="${dateString}"`;
 
                 connection.query(updateCommand, (err, results, fields) => {
                     if (err) {
@@ -119,9 +108,16 @@ function handlePost(req: NextApiRequest, res: NextApiResponse) {
                         return;
                     }
 
-                    if (event.songsPlayed) {
-                        updatePlayedSongs(connection, dateString, event.songsPlayed, () => {
-                            res.status(200).end();
+                    if (songsPlayed) {
+                        updatePlayedSongs(connection, dateString, songsPlayed, () => {
+                            const json = JSON.stringify({
+                                date: date,
+                                location: location ?? "",
+                                comment: comment ?? "",
+                                songsPlayed: songsPlayed ?? []
+                            });
+
+                            res.status(200).end(json);
                             connection.end();
                         })
                     }
@@ -143,7 +139,7 @@ function updatePlayedSongs(connection: mysql.Connection, date: string, songs: { 
                 });
             }
             else {
-                connection.query(`INSERT INTO Played VALUES(${date},"${songID}","${verses}",${index + 1})`, (err, results, fields) => {
+                connection.query(`INSERT INTO Played VALUES("${date}","${songID}","${verses}",${index + 1})`, (err, results, fields) => {
                     if (index === songs.length - 1 && callback) {
                         callback();
                     }
@@ -152,3 +148,4 @@ function updatePlayedSongs(connection: mysql.Connection, date: string, songs: { 
         });
     });
 }
+
