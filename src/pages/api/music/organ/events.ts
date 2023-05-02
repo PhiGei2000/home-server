@@ -1,6 +1,7 @@
 import * as mysql from 'mysql';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { toSqlDate } from '../../../../lib/sqlDateFormat';
+import { MediaType } from '../../../../lib/network';
 
 function connectDatabase() {
     return mysql.createConnection({
@@ -44,7 +45,8 @@ function getRedirectionUrl(date: Date | undefined) : string {
 }
 
 function handlePost(req: NextApiRequest, res: NextApiResponse) {
-    if (req.headers['content-type'] != "application/json") {
+    const mediaType = MediaType.parse(req.headers['content-type']!);
+    if (mediaType.type != 'application/json') {
         // send unsupported media type
         res.status(415);
         return;
