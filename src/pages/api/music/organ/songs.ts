@@ -23,9 +23,16 @@ function handleGet(req: NextApiRequest, res: NextApiResponse) {
     const { songID } = req.query;
 
     const connection = connectDatabase();
-    connection.query(`SELECT * FROM Songs WHERE SongID=${songID};`, function (err, result, fields) {
+    connection.query(`SELECT * FROM Songs WHERE SongID="${songID}";`, function (err, result, fields) {
         if (err) {
             res.status(500).end(err);
+
+            connection.end();
+            return;
+        }
+
+        if (result.length == 0) {
+            res.status(404).end();
 
             connection.end();
             return;
