@@ -1,16 +1,9 @@
 import * as mysql from 'mysql';
 import { NextApiRequest, NextApiResponse } from 'next';
-import { toSqlDate } from '../../../../lib/sqlDateFormat';
 import { MediaType } from '../../../../lib/network';
-
-function connectDatabase() {
-    return mysql.createConnection({
-        host: process.env.ORGAN_DATABASE_HOST,
-        user: process.env.ORGAN_DATABASE_USER,
-        password: process.env.ORGAN_DATABASE_PASSWORD,
-        database: 'organ'
-    });
-}
+import PlayEvent from '../../../../lib/music/event';
+import Song, { PlayedSong } from '../../../../lib/music/song';
+import { addOrUpdateEvent } from '../../../../lib/music/database';
 
 export default function handle(req: NextApiRequest, res: NextApiResponse) {
     switch (req.method) {
@@ -33,7 +26,7 @@ function handleGet(req: NextApiRequest, res: NextApiResponse) {
     res.redirect(307, getRedirectionUrl(parsedDate));
 }
 
-function getRedirectionUrl(date: Date | undefined) : string {
+function getRedirectionUrl(date: Date | undefined): string {
     const baseUrl = `${process.env.NEXT_PUBLIC_BASE_URL}api/music/organ/events`;
 
     if (date === undefined) {
@@ -44,7 +37,7 @@ function getRedirectionUrl(date: Date | undefined) : string {
     return `${baseUrl}/${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}/${date.getHours()}/${date.getMinutes()}/${date.getSeconds()}`;
 }
 
-function handlePost(req: NextApiRequest, res: NextApiResponse) {
+async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     const mediaType = MediaType.parse(req.headers['content-type']!);
     if (mediaType.type != 'application/json') {
         // send unsupported media type
@@ -52,102 +45,31 @@ function handlePost(req: NextApiRequest, res: NextApiResponse) {
         return;
     }
 
-    const {date, location, comment, songsPlayed} = req.body;
+    const { date, location, comment, songsPlayed } = req.body;
     if (!date) {
         res.status(415);
         return;
     }
 
-    const connection = connectDatabase();
-
     const eventDate = new Date(date);
-    const dateString = toSqlDate(eventDate);
 
-    // check if date exists
-    connection.query(`SELECT Date FROM Events WHERE Date="${dateString}"`, (err, results, fields) => {
-        const exists = results.length !== 0;
-        if (!exists) {
-            // create new entry
-            connection.query(`INSERT INTO Events(Date,Location,Comment) VALUES (\"${dateString}\","${location ?? ""}","${comment ?? ""}")`, (err, result, fields) => {
-                if (err) {
-                    res.status(500).end(err);
-                    connection.end();
-                    return;
+    const event = new PlayEvent(eventDate, location, comment);
+    event.songsPlayed = songsPlayed.map((playedSong: any) => new PlayedSong(new Song(playedSong.songID, "", "", ""), playedSong.verses));
+
+    addOrUpdateEvent(event)
+        .then(() => res.status(201).end())
+        .catch(err => {
+            // songID not found
+            if (err.errno === 1452) {
+                const rex = /SongID\=\'([^\']+)\'/
+
+                const match = rex.exec(err.sql)
+                if (match) {
+                    res.status(403).end(`Unknown songID ${match[1]}\n${err}`)
                 }
-
-                if (songsPlayed) {
-                    updatePlayedSongs(connection, dateString, songsPlayed, () => {
-                        const json = JSON.stringify({
-                            date: date,
-                            location: location ?? "",
-                            comment: comment ?? "",
-                            songsPlayed: songsPlayed ?? []
-                        });
-
-                        res.status(201).end(json);
-                        connection.end();
-                    })
-                }
-            });
-        }
-        else {
-            // update existing entry
-            let columnsToUpdate: { columnName: string, value: string }[] = [];
-            if (location !== undefined)
-                columnsToUpdate.push({ columnName: "Location", value: location });
-
-            if (comment !== undefined)
-                columnsToUpdate.push({ columnName: "Comment", value: comment });
-
-            if (columnsToUpdate.length !== 0) {
-                const setCommand = columnsToUpdate.map((val) => `${val.columnName}="${val.value}"`).join(",");
-                const updateCommand = `UPDATE Events SET ${setCommand} WHERE Date="${dateString}"`;
-
-                connection.query(updateCommand, (err, results, fields) => {
-                    if (err) {
-                        res.status(500).end(err);
-                        connection.end();
-                        return;
-                    }
-
-                    if (songsPlayed) {
-                        updatePlayedSongs(connection, dateString, songsPlayed, () => {
-                            const json = JSON.stringify({
-                                date: date,
-                                location: location ?? "",
-                                comment: comment ?? "",
-                                songsPlayed: songsPlayed ?? []
-                            });
-
-                            res.status(200).end(json);
-                            connection.end();
-                        })
-                    }
-                });
             }
-        }
-    });
-}
 
-function updatePlayedSongs(connection: mysql.Connection, date: string, songs: { songID: string, verses: string }[], callback?: () => void) {
-    songs.forEach(({ songID, verses }, index) => {
-        connection.query(`SELECT * FROM Played WHERE Date="${date}" AND Position=${index + 1}`, (err, results, fields) => {
-            const exists = results.length !== 0;
-            if (exists) {
-                connection.query(`UPDATE Played SET SongID="${songID}", Verses="${verses}" WHERE Date="${date}" AND Position=${index + 1}`, (err, results, fields) => {
-                    if (index === songs.length - 1 && callback) {
-                        callback();
-                    }
-                });
-            }
-            else {
-                connection.query(`INSERT INTO Played VALUES("${date}","${songID}","${verses}",${index + 1})`, (err, results, fields) => {
-                    if (index === songs.length - 1 && callback) {
-                        callback();
-                    }
-                });
-            }
+            res.status(500).json(err)
         });
-    });
 }
 

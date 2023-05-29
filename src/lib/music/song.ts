@@ -1,26 +1,41 @@
+import { escape as mysqlEscape } from "mysql";
+
 export default class Song {
     public songID: string;
     public title: string;
     public category: string;
     public section: string;
     public verses?: number;
+    public melody?: string;
 
-    constructor(songID: string, title: string, category: string, section: string, verses?: number) {
+    constructor(songID: string, title: string, category: string, section: string, verses?: number, melody?: string) {
         this.songID = songID;
         this.title = title;
         this.category = category;
         this.section = section;
         this.verses = verses;
+        this.melody = melody;
+    }
+
+    public toSqlString(): string {
+        return mysqlEscape({
+            SongID: this.songID,
+            Title: this.title,
+            Category: this.category,
+            Section: this.section,
+            Verses: this.verses,
+            Melody: this.melody
+        });
     }
 }
 
 export class PlayedSong {
     public song: Song;
-    public verses?: string;
+    public verses: string;
 
     constructor(song: Song, verses?: string) {
         this.song = song;
-        this.verses = verses ? PlayedSong.formatVerses(verses!) : "";
+        this.verses = verses ? PlayedSong.parseVerses(verses!) : "";
     }
 
     private static formatVerses(verses: string): string {
@@ -48,5 +63,44 @@ export class PlayedSong {
         }
 
         return result;
+    }
+
+    private static parseVerses(verses: string): string {
+        const pattern = /^\d+((\+|-)\d+)+$/;
+        const databasePattern = /^\d+(\,\d+)*$/
+
+        if (databasePattern.test(verses)) {
+            return verses;
+        }
+
+        if (!pattern.test(verses)) {
+            throw Error("Invalid format");
+        }
+
+        var parts = verses.split('+')
+
+        const converted = parts.map((part) => {
+            if (!part.includes('-'))
+                return part;
+
+            const [beginStr, endStr] = part.split('-', 2);
+            const [begin, end] = [Number.parseInt(beginStr), Number.parseInt(endStr)];
+
+            var result = [];
+            for (var i = begin; i <= end; i++) {
+                result.push(i.toString());
+            }
+
+            return result.join(',');
+        });
+
+        return converted.join(',');
+    }
+
+    public toSqlString(): string {
+        return mysqlEscape({
+            song: this.song,
+            verses: PlayedSong.formatVerses(this.verses)
+        });
     }
 }

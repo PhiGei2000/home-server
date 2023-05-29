@@ -1,6 +1,6 @@
 import { PlayedSong } from "./song";
 
-export default class Event {
+export default class PlayEvent {
     public date: Date;
     public location?: string;
     public comment?: string;

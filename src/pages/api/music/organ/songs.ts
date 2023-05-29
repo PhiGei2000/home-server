@@ -1,20 +1,15 @@
-import * as mysql from 'mysql';
 import { NextApiRequest, NextApiResponse } from 'next';
+import { addSong, getSong } from '../../../../lib/music/database';
+import { MediaType } from '../../../../lib/network';
 import Song from '../../../../lib/music/song';
-
-function connectDatabase() {
-    return mysql.createConnection({
-        host: process.env.ORGAN_DATABASE_HOST,
-        user: process.env.ORGAN_DATABASE_USER,
-        password: process.env.ORGAN_DATABASE_PASSWORD,
-        database: 'organ'
-    });
-}
 
 export default function handle(req: NextApiRequest, res: NextApiResponse) {
     switch (req.method) {
         case "GET":
             handleGet(req, res);
+            break;
+        case "POST":
+            handlePost(req, res);
             break;
     }
 }
@@ -22,26 +17,47 @@ export default function handle(req: NextApiRequest, res: NextApiResponse) {
 function handleGet(req: NextApiRequest, res: NextApiResponse) {
     const { songID } = req.query;
 
-    const connection = connectDatabase();
-    connection.query(`SELECT * FROM Songs WHERE SongID="${songID}";`, function (err, result, fields) {
-        if (err) {
-            res.status(500).end(err);
+    if (!songID) {
+        res.status(403).end('Enter a songID');
+    }
+    else {
+        getSong(songID as string)
+            .then((song) => {
+                if (song) {
+                    res.status(200).json(song);
+                }
+                else {
+                    res.status(404).end();
+                }
+            })
+            .catch((err) => res.status(500).end(err));
+    }
+}
 
-            connection.end();
-            return;
-        }
+async function handlePost(req: NextApiRequest, res: NextApiResponse) {
+    if (!req.headers["content-type"]) {
+        res.status(415).end();
+        return;
+    }
 
-        if (result.length == 0) {
-            res.status(404).end();
+    const contentType = MediaType.parse(req.headers["content-type"]!);
+    if (contentType.type !== "application/json") {
+        res.status(415).end();
+        return;
+    }
 
-            connection.end();
-            return;
-        }
+    const { songID, title, category, section, verses, melody } = req.body;
+    const song = new Song(songID, title, category, section, verses, melody);
 
-        const song = new Song(result[0].SongID, result[0].Title, result[0].Category, result[0].Section);
+    addSong(song)
+        .then((success) => {
+            res.status(success ? 201 : 500);
 
-        res.status(200).json(song);
+            if (success) {
+                res.json(song);
+            }
 
-        connection.end();
-    });
+            res.end();
+        })
+        .catch((err) => { res.status(500).end(err); });
 }

@@ -1,8 +1,9 @@
 import * as mysql from 'mysql';
 import { NextApiRequest, NextApiResponse } from 'next';
-import Event, * as EventData from '../../../../../lib/music/event';
+import PlayEvent, * as EventData from '../../../../../lib/music/event';
 import Song, { PlayedSong } from '../../../../../lib/music/song';
-import { toSqlDate } from '../../../../../lib/sqlDateFormat';
+import { toSqlDate } from '../../../../../lib/format';
+import { getEvents } from '../../../../../lib/music/database';
 
 const connectionConfig = {
     host: process.env.ORGAN_DATABASE_HOST,
@@ -33,60 +34,21 @@ function handleGet(req: NextApiRequest, res: NextApiResponse) {
         date = [date];
     }
 
-    const predicate = getDatePrecdicate(date)
-
-    const connection = connectDatabase();
-    connection.query(`SELECT * FROM Events ${predicate}`, function (err, results, fields) {
-        if (err) {
-            res.status(500).end(err);
-
-            connection.end()
-            return;
-        }
-
-        if (results.length === 0) {
-            res.status(404).end();
-
-            connection.end();
-            return;
-        }
-
-        const events: Event[] = results.map((result: any) => new EventData.default(result.Date, result.Location, result.Comment));
-        connection.end();
-
-        const connectionPool = mysql.createPool({
-            ...connectionConfig,
-            connectionLimit: results.length
+    const [begin, end] = getDatePredicate(date);
+    getEvents(begin, end)
+        .then(events => {
+            if (events) {
+                res.status(200).json(events);
+            }
+            else {
+                res.status(404).end();
+            }
         });
-
-
-        var eventsHandled = 0;
-        events.forEach((event) => {
-            const dateStr = toSqlDate(event.date);
-            connectionPool.query(`SELECT Songs.SongID, Songs.Title, Songs.Category, Songs.Section, Event.Verses FROM (SELECT * FROM Played WHERE Date="${dateStr}") as Event INNER JOIN Songs ON Songs.SongID=Event.SongID ORDER BY Position`)
-                .on('error', (err) => {
-                    res.status(500).end(err);
-
-                    connectionPool.end()
-                }).on('result', (res) => {
-                    const song = new Song(res.SongID, res.Title, res.Category, res.Section);
-                    event.songsPlayed.push(new PlayedSong(song, res.Verses));
-                }).on('end', () => {
-                    eventsHandled++;
-
-                    if (eventsHandled == results.length) {
-                        res.status(200).json(events);
-
-                        connectionPool.end();
-                    }
-                })
-        });
-    });
 }
 
-function getDatePrecdicate(date: string[] | undefined): string {
+function getDatePredicate(date: string[] | undefined): Date[] {
     if (date == undefined) {
-        return "";
+        return [];
     }
 
     const parseNumber = (str: string, def: number = 0) => str ? Number.parseInt(str) : def;
@@ -100,7 +62,7 @@ function getDatePrecdicate(date: string[] | undefined): string {
 
     const begin = new Date(year, month - 1, day, hour, minute);
     if (date[4]) {
-        return `WHERE DATE="${toSqlDate(begin)}"`;
+        return [begin];
     }
 
     let end;
@@ -117,5 +79,5 @@ function getDatePrecdicate(date: string[] | undefined): string {
         end = new Date(year, month - 1, day, hour + 1, minute);
     }
 
-    return `WHERE DATE BETWEEN "${toSqlDate(begin)}" AND "${toSqlDate(end)}"`;
+    return [begin, end];
 }
