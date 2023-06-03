@@ -1,3 +1,5 @@
+import * as mysql from 'mysql';
+
 export function toSqlDate(date: Date) {
     const year = date.getFullYear().toString().padStart(4, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -7,4 +9,8 @@ export function toSqlDate(date: Date) {
     const seconds = date.getSeconds().toString().padStart(2, '0');
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+export function formatSqlResult(result: any) {
+    return JSON.stringify(result)
 }

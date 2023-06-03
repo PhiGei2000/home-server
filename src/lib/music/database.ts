@@ -271,3 +271,20 @@ export async function addOrUpdateEvent(event: PlayEvent): Promise<void> {
 
     connection.end();
 }
+
+export async function execSql(sql: string): Promise<any> {
+    const connection = connectDatabase();
+
+    return new Promise((resolve, reject) => {
+        connection.query(sql, (err, result, fields) => {
+            if (err) {
+                reject(err);
+            }
+            else {
+                resolve(result);
+            }
+
+            connection.end();
+        })
+    });
+}
