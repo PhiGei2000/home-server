@@ -79,7 +79,7 @@ function File(file: FileSystemEntry, path: string) {
     const filetype = file.type === FileSystemEntryType.DIRECTORY ? "folder" : "draft";
     const link = `/files/${join(path, file.filename)}`;
 
-    return (<div className="col-md-2 text-center text-break">
+    return (<div className="col-sm-2 col-6 text-center text-break">
         <Link href={link} passHref className="text-decoration-none text-body">
             <span className="material-symbols-outlined">{filetype}</span>
             <p>{file.filename}</p>

@@ -63,7 +63,7 @@ export default function Dashboard() {
         return (<>
             <h3>Temperaturen</h3>
             <div className="row">
-                <div className="col-6">
+                <div className="col-md-6">
                     <div className="card">
                         <div className="card-body">
                             <h5 className="card-title">Temperatur: {data.latestMeasures[0].temperature}&deg;C</h5>
@@ -83,11 +83,11 @@ export default function Dashboard() {
             <div className="row">
                 {
                     data.lights.map((light) =>
-                        <div key={light.id} className="col-6">
+                        <div key={light.id} className="col-md-6">
                             <div className="card">
                                 <div className="card-body row">
                                     <h5 className="col card-title">{light.name} {light.pwm ? (light.currentValue / 1023).toFixed(0) : light.currentValue * 100}%</h5>
-                                    <div className="col-4">
+                                    <div className="col-6 btn-toolbar justify-content-end">
                                         <div className="btn-group" role="group" aria-label="Light Control">
                                             {light.pwm ? <button type="button" className="btn btn-secondary" onClick={() => {
                                                 var value = clampPWMValue(light.currentValue - 128);

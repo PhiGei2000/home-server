@@ -59,11 +59,14 @@ export default function Climate() {
             y: {
                 title: { text: 'Temperatur', display: true }
             }
-        }
+        },
+        maintainAspectRatio: true
     }
 
     return (
-        <Line data={data} options={options} />
+        <div className='row container-fluid overflow-scroll'>
+            <Line data={data} options={options} width={"100%"} style={{ minWidth: '500px', minHeight: '100px', maxHeight: '400px' }} />
+        </div>
     )
 }
 
