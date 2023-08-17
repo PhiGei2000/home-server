@@ -4,5 +4,8 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"terminal.integrated.cwd": "${workspaceFolder}",
+		"powershell.cwd": ""
+	}
 }

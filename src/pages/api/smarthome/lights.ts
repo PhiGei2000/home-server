@@ -1,41 +1,31 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import "child_process";
-import { ChildProcess, spawn } from "child_process";
+import { execSync } from "child_process";
+import { getLight, setLightValue } from '../../../lib/lights';
 
-type Lights = {
-    [key: string]: { pwm: boolean, gpio: number }
-};
-
-const lights : Lights = {
-    0: { pwm: true, gpio: 1 }
-};
 
 export default function handle(req: NextApiRequest, res: NextApiResponse) {
     switch (req.method) {
-        case 'POST':
+        case 'POST': {
             const lightID = req.query['id'] as string;
-            const value = req.query['value'] as string;
+            const value = Number.parseInt(req.query['value'] as string);
 
-            if (lights[lightID]) {
-                if (lights[lightID].pwm) {
-                    var process = spawn(`gpio pwm ${lights[lightID].gpio} ${value}`);
+            setLightValue(lightID, value).then((light) => {
+                if (!light) res.status(404).end();
+                else res.status(200).json(light);
+            }).catch((err) => {
+                res.status(500).json(err);
+            });
+        }
+            break;
+        case 'GET': {
+            const lightID = req.query['id'] as string;
 
-                    process.stdout.on('data', (data) => {
-                        console.log(data);
-                    });
-                }
-                else {
-                    var process = spawn(`gpio write ${lights[lightID].gpio} ${value}`);
-                    process.stdout.on('data', (data) => {
-                        console.log(data);
-                    });
-                }
-
-                res.status(200).end();
-            }
-            else {
-                res.status(404).end();
-            }
+            getLight(lightID).then(light => {
+                if (!light) res.status(404).end();
+                else res.status(200).json(light);
+            })
+        }
             break;
         default:
             res.status(405).end();
