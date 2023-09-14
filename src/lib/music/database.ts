@@ -30,6 +30,19 @@ function _getSong(songID: string, connection: mysql.Connection): Promise<Song | 
     });
 }
 
+function _getSongs(connection: mysql.Connection): Promise<Song[]> {
+    return new Promise<Song[]>((resolve, reject) => {
+        connection.query('SELECT * FROM Songs', (error, values, fields) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            resolve(values.map((value: any) => new Song(value.SongID, value.Title, value.Category, value.Section, value.Verses, value.Melody)));
+        });
+    });
+}
+
 function _getPlayedSongs(date: Date, connection: mysql.Connection): Promise<PlayedSong[] | undefined> {
     return new Promise<PlayedSong[] | undefined>((resolve, reject) => {
         connection.query('SELECT Songs.SongID,Played.Verses,Position,Title,Section,Category,Melody FROM Played INNER JOIN Songs ON Songs.SongID=Played.SongID WHERE Date=?', [toSqlDate(date)], (err, values, fields) => {
@@ -181,6 +194,14 @@ export async function getSong(songID: string): Promise<Song | undefined> {
             connection.end();
             return song;
         });
+}
+
+export async function getSongs(): Promise<Song[]> {
+    const connection = connectDatabase();
+    return _getSongs(connection).then((songs) => {
+        connection.end();
+        return songs;
+    })
 }
 
 export function addSong(song: Song): Promise<boolean> {

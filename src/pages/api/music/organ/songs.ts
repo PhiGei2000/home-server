@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { addSong, getSong } from '../../../../lib/music/database';
+import { addSong, getSong, getSongs } from '../../../../lib/music/database';
 import { MediaType } from '../../../../lib/network';
 import Song from '../../../../lib/music/song';
 
@@ -18,7 +18,10 @@ function handleGet(req: NextApiRequest, res: NextApiResponse) {
     const { songID } = req.query;
 
     if (!songID) {
-        res.status(403).end('Enter a songID');
+        getSongs()
+            .then((songs) => {
+                res.status(200).json(songs);
+            })
     }
     else {
         getSong(songID as string)
