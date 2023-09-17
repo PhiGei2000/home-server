@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { addSong, getSong, getSongs } from '../../../../lib/music/database';
+import { addSong, execSql, getSong, getSongs, getSongsByTitle } from '../../../../lib/music/database';
 import { MediaType } from '../../../../lib/network';
 import Song from '../../../../lib/music/song';
 
@@ -15,15 +15,15 @@ export default function handle(req: NextApiRequest, res: NextApiResponse) {
 }
 
 function handleGet(req: NextApiRequest, res: NextApiResponse) {
-    const { songID } = req.query;
+    const { songID, title } = req.query;
 
-    if (!songID) {
+    if (!songID && !title) {
         getSongs()
             .then((songs) => {
                 res.status(200).json(songs);
             })
     }
-    else {
+    else if (songID) {
         getSong(songID as string)
             .then((song) => {
                 if (song) {
@@ -34,6 +34,12 @@ function handleGet(req: NextApiRequest, res: NextApiResponse) {
                 }
             })
             .catch((err) => res.status(500).end(err));
+    }
+    else /*if (title)*/ {
+        getSongsByTitle(title as String)
+            .then((songs) => {
+                res.status(200).json(songs);
+            });
     }
 }
 

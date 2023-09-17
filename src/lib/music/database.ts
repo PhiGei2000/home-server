@@ -204,6 +204,23 @@ export async function getSongs(): Promise<Song[]> {
     })
 }
 
+export async function getSongsByTitle(title: String): Promise<Song[]> {
+    const connection = connectDatabase();
+    const titleWildcard = `\%${title}\%`;
+
+    return new Promise<Song[]>((resolve, reject) => connection.query("SELECT * FROM Songs WHERE Title LIKE ?", [titleWildcard], (error, values, fields) => {
+        if (error) {
+            reject(error);
+            return;
+        }
+
+        resolve(values.map((value: any) => new Song(value.SongID, value.Title, value.Category, value.Section, value.Verses, value.Melody)));
+    })).then((songs) => {
+        connection.end();
+        return songs;
+    });
+}
+
 export function addSong(song: Song): Promise<boolean> {
     const connection = connectDatabase();
     return _addSong(song, connection)
