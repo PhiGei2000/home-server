@@ -378,6 +378,24 @@ export async function addOrUpdateEvent(event: PlayEvent): Promise<void> {
     connection.end();
 }
 
+export async function getSections(): Promise<string[]> {
+    const connection = connectDatabase();
+
+    return _getSections(connection).then((sections) => {
+        connection.end();
+        return sections;
+    });
+}
+
+export async function getCategories(): Promise<string[]> {
+    const connection = connectDatabase();
+
+    return _getCategories(connection).then((categories) => {
+        connection.end();
+        return categories;
+    })
+}
+
 export async function getSectionsAndCategories(): Promise<{ sections: string[], categories: string[] } | undefined> {
     const connection = connectDatabase();
 
