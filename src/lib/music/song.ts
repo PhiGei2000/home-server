@@ -38,7 +38,7 @@ export class PlayedSong {
         this.verses = verses ? PlayedSong.parseVerses(verses!) : "";
     }
 
-    private static formatVerses(verses: string): string {
+    static formatVerses(verses: string): string {
         const numbers = verses.split(',').map((val) => Number.parseInt(val));
 
         let result = numbers[0].toString();
@@ -65,7 +65,7 @@ export class PlayedSong {
         return result;
     }
 
-    private static parseVerses(verses: string): string {
+    static parseVerses(verses: string): string {
         const pattern = /^\d+((\+|-)\d+)+$/;
         const databasePattern = /^\d+(\,\d+)*$/
 

@@ -43,6 +43,32 @@ function _getSongs(connection: mysql.Connection): Promise<Song[]> {
     });
 }
 
+function _getSongsByCategory(category: string, connection: mysql.Connection): Promise<Song[]> {
+    return new Promise<Song[]>((resolve, reject) => {
+        connection.query("SELECT * FROM Songs WHERE Category = ?", [category], (error, values, fields) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            resolve(values.map((value: any) => new Song(value.SongID, value.Title, value.Category, value.Section, value.Verses, value.Melody)));
+        })
+    })
+}
+
+function _getSongsBySection(section: string, connection: mysql.Connection): Promise<Song[]> {
+    return new Promise<Song[]>((resolve, reject) => {
+        connection.query("SELECT * FROM Songs WHERE Section = ?", [section], (error, values, fields) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            resolve(values.map((value: any) => new Song(value.SongID, value.Title, value.Category, value.Section, value.Verses, value.Melody)));
+        })
+    })
+}
+
 function _getPlayedSongs(date: Date, connection: mysql.Connection): Promise<PlayedSong[] | undefined> {
     return new Promise<PlayedSong[] | undefined>((resolve, reject) => {
         connection.query('SELECT Songs.SongID,Played.Verses,Position,Title,Section,Category,Melody FROM Played INNER JOIN Songs ON Songs.SongID=Played.SongID WHERE Date=?', [toSqlDate(date)], (err, values, fields) => {
@@ -187,6 +213,31 @@ function _deletePlayedSongs(date: Date, connection: mysql.Connection): Promise<n
     })
 }
 
+function _getSections(connection: mysql.Connection): Promise<string[]> {
+    return new Promise<string[]>((resolve, reject) => {
+        connection.query("SELECT DISTINCT Section FROM Songs", (error, results, fields) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            resolve(results.map((res: any) => res.Section));
+        })
+    });
+}
+
+function _getCategories(connection: mysql.Connection): Promise<string[]> {
+    return new Promise<string[]>((resolve, reject) => connection.query("SELECT DISTINCT Category FROM Songs", (err, results, fields) => {
+        if (err) {
+            reject(err);
+            return;
+        }
+
+        resolve(results.map((res: any) => res.Category));
+    })
+    )
+}
+
 export async function getSong(songID: string): Promise<Song | undefined> {
     const connection = connectDatabase();
     return _getSong(songID, connection)
@@ -204,7 +255,7 @@ export async function getSongs(): Promise<Song[]> {
     })
 }
 
-export async function getSongsByTitle(title: String): Promise<Song[]> {
+export async function getSongsByTitle(title: string): Promise<Song[]> {
     const connection = connectDatabase();
     const titleWildcard = `\%${title}\%`;
 
@@ -219,6 +270,23 @@ export async function getSongsByTitle(title: String): Promise<Song[]> {
         connection.end();
         return songs;
     });
+}
+
+export async function getSongsByCategory(category: string): Promise<Song[]> {
+    const connection = connectDatabase();
+
+    return _getSongsByCategory(category, connection).then((songs) => {
+        connection.end();
+        return songs;
+    })
+}
+
+export async function getSongsBySection(section: string): Promise<Song[]> {
+    const connection = connectDatabase();
+    return _getSongsBySection(section, connection).then((songs) => {
+        connection.end();
+        return songs;
+    })
 }
 
 export function addSong(song: Song): Promise<boolean> {
@@ -308,6 +376,24 @@ export async function addOrUpdateEvent(event: PlayEvent): Promise<void> {
     }
 
     connection.end();
+}
+
+export async function getSectionsAndCategories(): Promise<{ sections: string[], categories: string[] } | undefined> {
+    const connection = connectDatabase();
+
+    var sections, categories;
+    try {
+        sections = await _getSections(connection);
+        categories = await _getCategories(connection);
+    }
+    catch (e) {
+        return undefined;
+    }
+    finally {
+        connection.end();
+    }
+
+    return { sections: sections, categories: categories };
 }
 
 export async function execSql(sql: string): Promise<any> {

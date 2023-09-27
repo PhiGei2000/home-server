@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { addSong, execSql, getSong, getSongs, getSongsByTitle } from '../../../../lib/music/database';
+import { addSong, execSql, getSong, getSongs, getSongsByCategory, getSongsBySection, getSongsByTitle } from '../../../../lib/music/database';
 import { MediaType } from '../../../../lib/network';
 import Song from '../../../../lib/music/song';
 
@@ -15,15 +15,18 @@ export default function handle(req: NextApiRequest, res: NextApiResponse) {
 }
 
 function handleGet(req: NextApiRequest, res: NextApiResponse) {
-    const { songID, title } = req.query;
+    const { songID, title, category, section } = req.query;
 
-    if (!songID && !title) {
-        getSongs()
-            .then((songs) => {
-                res.status(200).json(songs);
-            })
+    function sendSongs(songs: Song[]) {
+        if (songs) {
+            res.status(200).json(songs);
+        }
+        else {
+            res.status(404).end();
+        }
     }
-    else if (songID) {
+
+    if (songID) {
         getSong(songID as string)
             .then((song) => {
                 if (song) {
@@ -35,11 +38,20 @@ function handleGet(req: NextApiRequest, res: NextApiResponse) {
             })
             .catch((err) => res.status(500).end(err));
     }
-    else /*if (title)*/ {
-        getSongsByTitle(title as String)
-            .then((songs) => {
-                res.status(200).json(songs);
-            });
+    else if (title) {
+        getSongsByTitle(title as string)
+            .then(sendSongs);
+    }
+    else if (category) {
+        getSongsByCategory(category as string)
+            .then(sendSongs);
+    }
+    else if (section) {
+        getSongsBySection(section as string)
+            .then(sendSongs);
+    }
+    else {
+        getSongs().then(sendSongs)
     }
 }
 
