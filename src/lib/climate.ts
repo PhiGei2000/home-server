@@ -12,7 +12,7 @@ export class ClimateMeasure {
 
     static fromCSV(csv: string, sensorId: number): ClimateMeasure[] {
         const lines = csv.split('\r\n');
-        return lines.slice(1, lines.length - 2).map(line => {
+        return lines.slice(1, lines.length - 1).map(line => {
             const parts = line.split(',');
 
             return new ClimateMeasure(new Date(parts[0]), parseFloat(parts[1]), sensorId);
