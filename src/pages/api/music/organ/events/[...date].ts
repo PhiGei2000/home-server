@@ -41,7 +41,7 @@ function handleGet(req: NextApiRequest, res: NextApiResponse) {
                 res.status(200).json(events);
             }
             else {
-                res.status(404).end();
+                res.status(200).json([]);
             }
         });
 }
