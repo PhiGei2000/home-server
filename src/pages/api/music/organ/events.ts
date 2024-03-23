@@ -8,11 +8,12 @@ import { addOrUpdateEvent } from '../../../../lib/music/database';
 export default function handle(req: NextApiRequest, res: NextApiResponse) {
     switch (req.method) {
         case "GET":
+        case "HEAD":
             handleGet(req, res);
             break;
         case "POST":
             handlePost(req, res);
-            break;
+            break;            
         default:
             res.end(405);
             break;
@@ -72,4 +73,3 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
             res.status(500).json(err)
         });
 }
-

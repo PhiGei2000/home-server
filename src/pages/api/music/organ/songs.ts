@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { addSong, execSql, getSong, getSongs, getSongsByCategory, getSongsBySection, getSongsByTitle } from '../../../../lib/music/database';
-import { MediaType } from '../../../../lib/network';
+import { DatabaseResponse, addSong, execSql, getSong, getSongs, getSongsByCategory, getSongsBySection, getSongsByTitle } from '../../../../lib/music/database';
+import { MediaType, toHttpDate } from '../../../../lib/network';
 import Song from '../../../../lib/music/song';
 
 export default function handle(req: NextApiRequest, res: NextApiResponse) {
@@ -17,9 +17,9 @@ export default function handle(req: NextApiRequest, res: NextApiResponse) {
 function handleGet(req: NextApiRequest, res: NextApiResponse) {
     const { songID, title, category, section } = req.query;
 
-    function sendSongs(songs: Song[]) {
-        if (songs) {
-            res.status(200).json(songs);
+    function sendSongs(songs: DatabaseResponse<Song | Song[]>) {
+        if (songs.data) {
+            res.status(200).setHeader("Last-Modified", toHttpDate(songs.lastModified)).json(songs.data);
         }
         else {
             res.status(404).end();
@@ -29,12 +29,7 @@ function handleGet(req: NextApiRequest, res: NextApiResponse) {
     if (songID) {
         getSong(songID as string)
             .then((song) => {
-                if (song) {
-                    res.status(200).json(song);
-                }
-                else {
-                    res.status(404).end();
-                }
+                sendSongs(song);
             })
             .catch((err) => res.status(500).end(err));
     }
@@ -75,7 +70,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
             res.status(success ? 201 : 500);
 
             if (success) {
-                res.json(song);
+                res.setHeader("Last-Modified", toHttpDate(new Date(Date.now()))).json(song);
             }
 
             res.end();

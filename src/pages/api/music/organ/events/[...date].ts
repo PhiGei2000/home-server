@@ -4,6 +4,7 @@ import PlayEvent, * as EventData from '../../../../../lib/music/event';
 import Song, { PlayedSong } from '../../../../../lib/music/song';
 import { toSqlDate } from '../../../../../lib/format';
 import { getEvents } from '../../../../../lib/music/database';
+import { toHttpDate } from '../../../../../lib/network';
 
 const connectionConfig = {
     host: process.env.ORGAN_DATABASE_HOST,
@@ -19,8 +20,9 @@ function connectDatabase() {
 export default function handle(req: NextApiRequest, res: NextApiResponse) {
     switch (req.method) {
         case "GET":
+        case "HEAD":
             handleGet(req, res);
-            break;
+            break;        
         default:
             res.end(405);
             break;
@@ -37,11 +39,19 @@ function handleGet(req: NextApiRequest, res: NextApiResponse) {
     const [begin, end] = getDatePredicate(date);
     getEvents(begin, end)
         .then(events => {
-            if (events) {
-                res.status(200).json(events);
+            if (events.data) {
+                res.status(200);
+                
+                const lastModified = toHttpDate(events.lastModified);
+                res.setHeader("Last-Modified", lastModified);
+                
+                if (req.method == "GET") {
+                    res.json(events.data);
+                }
             }
             else {
-                res.status(200).json([]);
+                res.status(200);
+                res.end();
             }
         });
 }

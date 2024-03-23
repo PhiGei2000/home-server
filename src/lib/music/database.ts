@@ -12,6 +12,16 @@ function connectDatabase() {
     });
 }
 
+export class DatabaseResponse<T> {
+    data: T | undefined;
+    lastModified: Date;
+
+    constructor(data?: T, lastModified?: Date) {
+        this.data = data;
+        this.lastModified = lastModified ?? new Date(Date.now());
+    }
+}
+
 function _getSong(songID: string, connection: mysql.Connection): Promise<Song | undefined> {
     return new Promise<Song | undefined>((resolve, reject) => {
         connection.query(`SELECT * FROM Songs WHERE SongID= ?`, [songID], (error, values, fields) => {
@@ -238,73 +248,100 @@ function _getCategories(connection: mysql.Connection): Promise<string[]> {
     )
 }
 
-export async function getSong(songID: string): Promise<Song | undefined> {
-    const connection = connectDatabase();
-    return _getSong(songID, connection)
-        .then((song) => {
-            connection.end();
-            return song;
-        });
+function _getUpdateTimes(connection: mysql.Connection, tableName?: string): Promise<{ tableName: string, updateTime: Date }[] | undefined> {
+    return new Promise((resolve, reject) => {
+        var responseHandler = (err, result, fields) => {
+            if (err) {
+                reject(err);
+            }
+            else {
+                var data = result.map((value: any) => { return { tableName: value.TABLE_NAME, updateTime: Date.parse(value.UPDATE_TIME ?? value.CREATE_TIME) } });
+                resolve(data);
+            }
+        };
+
+        if (tableName) {
+            connection.query("SELECT TABLE_NAME,UPDATE_TIME,CREATE_TIME FROM information_schema.tables WHERE TABLE_SCHEMA = 'organ' AND TABLE_NAME = ?", [tableName], responseHandler);
+        }
+        else {
+            connection.query("SELECT TABLE_NAME,UPDATE_TIME,CREATE_TIME FROM information_schema.tables WHERE TABLE_SCHEMA = 'organ'", responseHandler);
+        }
+    });
 }
 
-export async function getSongs(): Promise<Song[]> {
+export async function getSong(songID: string): Promise<DatabaseResponse<Song>> {
     const connection = connectDatabase();
-    return _getSongs(connection).then((songs) => {
-        connection.end();
-        return songs;
-    })
+    var song = await _getSong(songID, connection);
+    var updateTime = await _getUpdateTimes(connection, "Songs");
+    connection.end();
+
+    return new DatabaseResponse(song, updateTime?.at(0)?.updateTime);
 }
 
-export async function getSongsByTitle(title: string): Promise<Song[]> {
+export async function getSongs(): Promise<DatabaseResponse<Song[]>> {
+    const connection = connectDatabase();
+    var songs = await _getSongs(connection);
+    var updateTime = await _getUpdateTimes(connection, "Songs");
+    connection.end();
+
+    return new DatabaseResponse(songs, updateTime?.at(0)?.updateTime);
+}
+
+export async function getSongsByTitle(title: string): Promise<DatabaseResponse<Song[]>> {
     const connection = connectDatabase();
     const titleWildcard = `\%${title}\%`;
 
-    return new Promise<Song[]>((resolve, reject) => connection.query("SELECT * FROM Songs WHERE Title LIKE ?", [titleWildcard], (error, values, fields) => {
+    var songs = await new Promise<Song[]>((resolve, reject) => connection.query("SELECT * FROM Songs WHERE Title LIKE ?", [titleWildcard], (error, values, fields) => {
         if (error) {
             reject(error);
             return;
         }
 
         resolve(values.map((value: any) => new Song(value.SongID, value.Title, value.Category, value.Section, value.Verses, value.Melody)));
-    })).then((songs) => {
-        connection.end();
-        return songs;
-    });
+    }));
+
+    var updateTime = await _getUpdateTimes(connection, "Songs");
+    connection.end();
+
+    return new DatabaseResponse(songs, updateTime?.at(0)?.updateTime);
 }
 
-export async function getSongsByCategory(category: string): Promise<Song[]> {
+export async function getSongsByCategory(category: string): Promise<DatabaseResponse<Song[]>> {
     const connection = connectDatabase();
 
-    return _getSongsByCategory(category, connection).then((songs) => {
-        connection.end();
-        return songs;
-    })
+    var songs = await _getSongsByCategory(category, connection);
+    var updateTime = await _getUpdateTimes(connection, "Songs");
+    connection.end();
+
+    return new DatabaseResponse(songs, updateTime?.at(0)?.updateTime);
 }
 
-export async function getSongsBySection(section: string): Promise<Song[]> {
+export async function getSongsBySection(section: string): Promise<DatabaseResponse<Song[]>> {
     const connection = connectDatabase();
-    return _getSongsBySection(section, connection).then((songs) => {
-        connection.end();
-        return songs;
-    })
+    var songs = await _getSongsBySection(section, connection)
+
+    var updateTime = await _getUpdateTimes(connection, "Songs");
+    connection.end();
+
+    return new DatabaseResponse(songs, updateTime?.at(0)?.updateTime);
 }
 
-export function addSong(song: Song): Promise<boolean> {
+export function addSong(song: Song): Promise<DatabaseResponse<boolean>> {
     const connection = connectDatabase();
     return _addSong(song, connection)
         .then((success) => {
             connection.end();
-            return success;
+            return new DatabaseResponse(success);
         }).catch((err) => {
             connection.end();
-            return false;
+            return new DatabaseResponse(false);
         });
 }
 
-export function getEvents(begin: Date, end?: Date): Promise<PlayEvent[] | undefined> {
+export async function getEvents(begin: Date, end?: Date): Promise<DatabaseResponse<PlayEvent[]>> {
     const connection = connectDatabase();
     if (!end) {
-        return _getEvent(begin, connection)
+        var event = await _getEvent(begin, connection)
             .then(async (event) => {
                 if (!event) {
                     return undefined;
@@ -316,12 +353,25 @@ export function getEvents(begin: Date, end?: Date): Promise<PlayEvent[] | undefi
                         return [event];
                     });
             }).catch((err) => {
-                connection.end();
                 return undefined;
             });
+
+        var updateTimes = await _getUpdateTimes(connection);
+        connection.end();
+        var updateTime = new Date(0);
+
+        if (updateTimes) {
+            updateTimes.forEach((entry) => {
+                if (entry.tableName == "Events" || entry.tableName == "Played") {
+                    if (updateTime < entry.updateTime) { updateTime = entry.updateTime; }
+                }
+            })
+        }
+
+        return new DatabaseResponse(event, updateTime);
     }
 
-    return _getEvents(begin, end, connection)
+    var events = _getEvents(begin, end, connection)
         .then(async (events) => {
             if (!events) {
                 return undefined;
@@ -336,21 +386,33 @@ export function getEvents(begin: Date, end?: Date): Promise<PlayEvent[] | undefi
 
             return events;
         }).catch((err) => {
-            connection.end();
             return undefined;
         });
+
+    var updateTimes = await _getUpdateTimes(connection);
+    connection.end();
+    var updateTime = new Date(0);
+
+    if (updateTimes) {
+        updateTimes.forEach((entry) => {
+            if (entry.tableName == "Events" || entry.tableName == "Played") {
+                if (updateTime < entry.updateTime) { updateTime = entry.updateTime; }
+            }
+        })
+    }
+
+    return new DatabaseResponse(event, updateTime);
 }
 
-export function getPlayedSongs(date: Date): Promise<PlayedSong[] | undefined> {
+export async function getPlayedSongs(date: Date): Promise<DatabaseResponse<PlayedSong[]>> {
     const connection = connectDatabase();
-    return _getPlayedSongs(date, connection)
-        .then((songs) => {
-            connection.end();
-            return songs;
-        }).catch((err) => {
-            connection.end();
-            return undefined;
-        });
+    var songs = await _getPlayedSongs(date, connection)
+        .catch((err) => undefined);
+
+    var updateTime = await _getUpdateTimes(connection, "Played");
+    connection.end();
+
+    return new DatabaseResponse(songs, updateTime?.at(0)?.updateTime);
 }
 
 export async function addOrUpdateEvent(event: PlayEvent): Promise<void> {
@@ -378,40 +440,52 @@ export async function addOrUpdateEvent(event: PlayEvent): Promise<void> {
     connection.end();
 }
 
-export async function getSections(): Promise<string[]> {
+export async function getSections(): Promise<DatabaseResponse<string[]>> {
     const connection = connectDatabase();
 
-    return _getSections(connection).then((sections) => {
-        connection.end();
-        return sections;
-    });
+    const sections = await _getSections(connection);
+    const updateTime = (await _getUpdateTimes(connection, "Songs"))?.at(0)?.updateTime;
+    connection.end();
+
+    return new DatabaseResponse(sections, updateTime);
 }
 
-export async function getCategories(): Promise<string[]> {
+export async function getCategories(): Promise<DatabaseResponse<string[]>> {
     const connection = connectDatabase();
 
-    return _getCategories(connection).then((categories) => {
-        connection.end();
-        return categories;
-    })
+    const categories = await _getCategories(connection);
+    const updateTime = (await _getUpdateTimes(connection, "Songs"))?.at(0)?.updateTime;
+    connection.end();
+
+    return new DatabaseResponse(categories, updateTime);
 }
 
-export async function getSectionsAndCategories(): Promise<{ sections: string[], categories: string[] } | undefined> {
+export async function getSectionsAndCategories(): Promise<DatabaseResponse<{ sections: string[], categories: string[] }>> {
     const connection = connectDatabase();
 
-    var sections, categories;
+    var sections, categories, updateTime;
     try {
         sections = await _getSections(connection);
         categories = await _getCategories(connection);
+        updateTime = (await _getUpdateTimes(connection))?.at(0)?.updateTime;
     }
     catch (e) {
-        return undefined;
+        return new DatabaseResponse<{sections: string[], categories: string[]}>(undefined);
     }
     finally {
         connection.end();
     }
 
-    return { sections: sections, categories: categories };
+    return new DatabaseResponse({ sections: sections, categories: categories }, updateTime);
+}
+
+export async function getTableUpdateTimes(): Promise<{ tableName: string, updateTime: Date }[] | undefined> {
+    const connection = connectDatabase();
+
+    var data = await _getUpdateTimes(connection);
+    connection.end();
+
+    return data;
 }
 
 export async function execSql(sql: string): Promise<any> {
