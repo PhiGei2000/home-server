@@ -39,9 +39,9 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
 function checkSql(sql: String): boolean {
     sql = sql.trim()
 
-    const positions = []
+    const positions : number[] = []
     for (var i = 0; i < sql.length; i++) {
-        if (sql.charAt(i) === ';') positions.push(i)
+        if (sql.charAt(i) === ';') positions.push(i);
     }
 
     return positions.length === 1 && positions[0] === sql.length - 1

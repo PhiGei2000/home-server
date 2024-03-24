@@ -86,7 +86,7 @@ export class PlayedSong {
             const [beginStr, endStr] = part.split('-', 2);
             const [begin, end] = [Number.parseInt(beginStr), Number.parseInt(endStr)];
 
-            var result = [];
+            var result : string[] = []; 
             for (var i = begin; i <= end; i++) {
                 result.push(i.toString());
             }
