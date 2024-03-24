@@ -340,8 +340,9 @@ export function addSong(song: Song): Promise<DatabaseResponse<boolean>> {
 
 export async function getEvents(begin: Date, end?: Date): Promise<DatabaseResponse<PlayEvent[]>> {
     const connection = connectDatabase();
+    var data
     if (!end) {
-        var event = await _getEvent(begin, connection)
+        data = await _getEvent(begin, connection)
             .then(async (event) => {
                 if (!event) {
                     return undefined;
@@ -368,10 +369,10 @@ export async function getEvents(begin: Date, end?: Date): Promise<DatabaseRespon
             })
         }
 
-        return new DatabaseResponse(event, updateTime);
+        return new DatabaseResponse(data, updateTime);
     }
 
-    var events = _getEvents(begin, end, connection)
+    data = await _getEvents(begin, end, connection)
         .then(async (events) => {
             if (!events) {
                 return undefined;
@@ -386,6 +387,7 @@ export async function getEvents(begin: Date, end?: Date): Promise<DatabaseRespon
 
             return events;
         }).catch((err) => {
+            console.log(err);
             return undefined;
         });
 
@@ -401,7 +403,7 @@ export async function getEvents(begin: Date, end?: Date): Promise<DatabaseRespon
         })
     }
 
-    return new DatabaseResponse(event, updateTime);
+    return new DatabaseResponse(data, updateTime);
 }
 
 export async function getPlayedSongs(date: Date): Promise<DatabaseResponse<PlayedSong[]>> {
