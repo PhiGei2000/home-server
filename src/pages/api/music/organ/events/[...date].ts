@@ -48,6 +48,7 @@ function handleGet(req: NextApiRequest, res: NextApiResponse) {
                 if (req.method == "GET") {
                     res.json(events.data);
                 }
+                res.end();
             }
             else {
                 res.status(200);
